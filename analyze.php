@@ -1,52 +1,124 @@
 <?php
 
-if(!isset($_POST['postAPI'])) 
-{
-	header('Location: index.php');
-}
+header("Access-Control-Allow-Origin: *");
+if(!isset($_POST['postAPI']))
+	{ 
+		header('Location: index.php'); 
+	}
+
 $apiKey=$_POST['postAPI'];
 $formID=$_POST['postFormID'];
+
 
 $dataRequest=file_get_contents("https://api.jotform.com/form/".$formID."/submissions?apiKey=".$apiKey);
 $dataResponse=json_decode($dataRequest,true);
 
-$allData = [];
+
+$data = [];
 $arrayAnswers=array();
 $elementTypes=['control_radio','control_dropdown','control_textbox','control_checkbox','control_number','control_textarea']; // allowable elements
 
-for ($i=1; $i <= count($dataResponse['content'][0]['answers']) ; $i++) //turns up number of elements
-{ 
-	if (array_key_exists("answer", $dataResponse['content'][0]['answers'][$i])) //checks if element is a question
+
+
+
+
+
+
+// if (count($dataResponse['content'])>0) 
+// {
+// 	foreach ($dataResponse['content'] as $submissions) 
+// 	{
+// 		foreach ($submissions['answers'] as $qID => $elements) 
+// 		{
+			
+// 			if (isset($elements['answer']) && 
+// 				isset($elements['type']) &&
+// 				in_array($elements['type'], $elementTypes)) 
+// 			{
+// 				if (!isset($data[$qID])) $data[$qID] = array();
+// 				$tempAnswer = !is_array($elements['answer']) ? array($elements['answer']) : $elements['answer'];
+
+// 				foreach ($tempAnswer as $value) 
+// 				{
+// 					if(isset($data[$qID][$value]))
+// 					{
+// 						$data[$qID][$value]++;
+// 					} 
+// 					else 
+// 					{
+// 						$data[$qID][$value] = 1;
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+
+
+// 	echo json_encode($data);
+
+// }
+// else echo "No submission!";
+
+
+
+
+
+
+
+if (count($dataResponse['content'])>0)
+{
+	foreach ($dataResponse['content'] as $submissions) 
 	{
-		if (in_array($dataResponse['content'][0]['answers'][$i]['type'], $elementTypes)) //checks elements allowable
-		{
-			$arrayAnswers=[]; //clear the array after Bucket function
-			for ($j=0; $j < count($dataResponse['content']) ; $j++)
-			{ 
-				if (gettype($dataResponse['content'][$j]['answers'][$i]['answer']) != "array") 
+		foreach ($submissions['answers'] as $qID => $elements) 
+		{	
+			$arrayAnswers=[];
+			if (isset($elements['answer']) &&
+				isset($elements['type']) &&
+				in_array($elements['type'], $elementTypes)) 
+			{	
+				if (gettype($elements['answer']) != "array") 
 				{
-					array_push($arrayAnswers, $dataResponse['content'][$j]['answers'][$i]['answer']);
+					array_push($arrayAnswers, $elements['answer']);
+					
 				}
 				else
 				{
-					for ($k=0; $k < count($dataResponse['content'][$j]['answers'][$i]['answer']) ; $k++) 
+					for ($i=0; $i <count($elements['answer']) ; $i++) 
 					{
-						array_push($arrayAnswers, $dataResponse['content'][$j]['answers'][$i]['answer'][$k]);
+						array_push($arrayAnswers, $elements['answer'][$i]);
+						
+					}	
+				}
+				
+
+
+				if (!isset($data[$qID])) 
+				{
+					$data[$qID] = array(
+						'question' => $elements['text'],
+						'answer' => $arrayAnswers
+					);
+				}
+
+				else 
+				{
+					foreach ($arrayAnswers as $arrValue) 
+					{
+						array_push($data[$qID]["answer"], $arrValue);
 					}
 				}
 			}
-				
-			$data = 
-			[
-				'question' => $dataResponse['content'][0]['answers'][$i]['text'],
-				'answers' => array_count_values($arrayAnswers)
-			];
-				
-			$allData[$i] = $data;
 		}
-			
 	}
+	
+	foreach ($data as $qIndex => $qValue) 
+	{
+		$data[$qIndex]['answer'] = array_count_values($data[$qIndex]['answer']);
+		
+	}
+	echo json_encode($data);
+	
+	
+	
 }
-return $allData;
-//print_r($allData);
-?>
+else echo "No submission!";
